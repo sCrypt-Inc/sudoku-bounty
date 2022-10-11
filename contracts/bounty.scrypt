@@ -1,8 +1,8 @@
 import "groth16/zksnark.scrypt";
 
 struct ECPoint {
-    int x;
-    int y;
+    int[4] x;
+    int[4] y;
 }
 
 contract InformationBounty {
@@ -15,12 +15,31 @@ contract InformationBounty {
 
     public function unlock(
                         ECPoint Qb,   // Bobs public key
-                        int ew        // Solution of puzzle, encrypted with shared key Qs
+                        int ew,        // Solution of puzzle, encrypted with shared key Qs
                         Proof pi,     // Proof of solution for the whole circuit C
                         SigHashPreimage preimage
                     ) {
 
-        int[3] pubInputs = [this.Qa.x, this.Qa.y, Qb.x, Qb.y, ew, this.x];
+        int[3] pubInputs = [
+                   this.Qa.x[0],
+                   this.Qa.x[1],
+                   this.Qa.x[2],
+                   this.Qa.x[3],
+                   this.Qa.y[0],
+                   this.Qa.y[1],
+                   this.Qa.y[2],
+                   this.Qa.y[3],
+                   Qb.x[0],
+                   Qb.x[1],
+                   Qb.x[2],
+                   Qb.x[3],
+                   Qb.y[0],
+                   Qb.y[1],
+                   Qb.y[2],
+                   Qb.y[3],
+                   ew,
+                   this.x
+               ];
         bool proofCorrect = verifyOptimized(pubInputs, pi, this.vk);
         require(proofCorrect);
 
@@ -29,7 +48,7 @@ contract InformationBounty {
         Ripemd160 pkh = hash160(point2PubKey(Qb));
         bytes outputScript = Utils.buildPublicKeyHashScript(pkh);       // TODO: this could just be P2PK because the PK is revealed beforehand anyway
         bytes output = Utils.buildOutput(outputScript, satsReward);
-        return (hash256(output) == SigHash.hashOutputs(txPreimage));
+        return hash256(output) == SigHash.hashOutputs(txPreimage);
     }
 
 
@@ -46,6 +65,23 @@ contract InformationBounty {
 
     static function point2PubKey(ECPoint point) : PubKey {
         // Convert a point to a uncompressed public key.
-        return PubKey(b'04' + toBEUnsigned(point.x, 32) + toBEUnsigned(point.y, 32));
+        return PubKey(b'04' + \
+                toBEUnsigned(point.x[0], 8) + \
+                toBEUnsigned(point.x[1], 8) + \
+                toBEUnsigned(point.x[2], 8) + \
+                toBEUnsigned(point.x[3], 8) + \
+                toBEUnsigned(point.y[0], 8) + \
+                toBEUnsigned(point.y[1], 8) + \
+                toBEUnsigned(point.y[2], 8) + \
+                toBEUnsigned(point.y[3], 8) + \
+            );
     }
+
+    static function toBEUnsigned(int n, static const  int l) : bytes {
+        // Convert signed integer `n` to unsigned integer of `l` bytes, in big endian.
+        bytes m = Utils.toLEUnsigned(n, l);
+        return reverseBytes(m,l);
+    }
+
+
 }

@@ -1,0 +1,37 @@
+{
+  "name": "scrypt-private-non-interactive-bounty",
+  "version": "0.0.1",
+  "description": "Demo implementation of a private non-interactive bounty smart contract. ",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS=--max_old_space_size=56000 mocha -r ts-node/register 'test/**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sCrypt-Inc/scrypt-private-non-interactive-bounty.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sCrypt-Inc/scrypt-private-non-interactive-bounty/issues"
+  },
+  "homepage": "https://github.com/sCrypt-Inc/scrypt-private-non-interactive-bounty#readme",
+  "dependencies": {
+    "circomlib": "^2.0.2",
+    "ethers": "^5.5.2",
+    "snarkjs": "^0.4.10",
+    "scryptlib": "^1.0.8"
+  },
+  "devDependencies": {
+    "@noble/secp256k1": "1.3.4",
+    "@types/chai": "^4.3.0",
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^9.0.0",
+    "chai": "^4.3.4",
+    "circom_tester": "0.0.9",
+    "mocha": "^9.1.3",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
+  }
+}
