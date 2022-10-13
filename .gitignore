@@ -1,5 +1,10 @@
 out-scrypt/
 out/
+compiler/
+test_main*
+pot21_final.ptau
+public.json
+*.zkey
 
 # Logs
 logs

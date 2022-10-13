@@ -14,6 +14,9 @@ x - secret solution
 Shared key:  Qs = (da * db) * G = db * Qa
 
 
+Poseidon encryption is used with Qs.x mod p (bn128) as the encryption key.
+
+
 Definition of ZK circuit C:
 ------
 
@@ -57,3 +60,4 @@ contract BountySudokuSolution {
 
 // TODO:
 - How does bob ensure that proving key pk actually corresponds to vk before doing computation?
+- Auto download sCrypt compiler if not present.

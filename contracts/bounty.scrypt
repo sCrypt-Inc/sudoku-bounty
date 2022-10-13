@@ -20,7 +20,7 @@ contract InformationBounty {
                         SigHashPreimage preimage
                     ) {
 
-        int[3] pubInputs = [
+        int[] pubInputs = [
                    this.Qa.x[0],
                    this.Qa.x[1],
                    this.Qa.x[2],
@@ -40,19 +40,19 @@ contract InformationBounty {
                    ew,
                    this.x
                ];
-        bool proofCorrect = verifyOptimized(pubInputs, pi, this.vk);
+        bool proofCorrect = ZKSNARK.verifyOptimized(pubInputs, pi, this.vk);
         require(proofCorrect);
 
         // Ensure next output will pay Qb.
         require(Tx.checkPreimage(preimage));
         Ripemd160 pkh = hash160(point2PubKey(Qb));
         bytes outputScript = Utils.buildPublicKeyHashScript(pkh);       // TODO: this could just be P2PK because the PK is revealed beforehand anyway
-        bytes output = Utils.buildOutput(outputScript, satsReward);
-        return hash256(output) == SigHash.hashOutputs(txPreimage);
+        bytes output = Utils.buildOutput(outputScript, this.satsReward);
+        require(hash256(output) == SigHash.hashOutputs(preimage));
     }
 
 
-    public function deadline(Signature sig, SigHashPreimage preimage) {
+    public function deadline(Sig sig, SigHashPreimage preimage) {
         // Check if signature by Qa.
         require(checkSig(sig, point2PubKey(this.Qa)));
 
@@ -65,16 +65,15 @@ contract InformationBounty {
 
     static function point2PubKey(ECPoint point) : PubKey {
         // Convert a point to a uncompressed public key.
-        return PubKey(b'04' + \
-                toBEUnsigned(point.x[0], 8) + \
-                toBEUnsigned(point.x[1], 8) + \
-                toBEUnsigned(point.x[2], 8) + \
-                toBEUnsigned(point.x[3], 8) + \
-                toBEUnsigned(point.y[0], 8) + \
-                toBEUnsigned(point.y[1], 8) + \
-                toBEUnsigned(point.y[2], 8) + \
-                toBEUnsigned(point.y[3], 8) + \
-            );
+        return PubKey(b'04' + 
+                toBEUnsigned(point.x[0], 8) + 
+                toBEUnsigned(point.x[1], 8) + 
+                toBEUnsigned(point.x[2], 8) + 
+                toBEUnsigned(point.x[3], 8) + 
+                toBEUnsigned(point.y[0], 8) + 
+                toBEUnsigned(point.y[1], 8) + 
+                toBEUnsigned(point.y[2], 8) + 
+                toBEUnsigned(point.y[3], 8));
     }
 
     static function toBEUnsigned(int n, static const  int l) : bytes {
