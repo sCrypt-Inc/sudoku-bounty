@@ -15,7 +15,8 @@ contract InformationBounty {
 
     public function unlock(
                         ECPoint Qb,   // Bobs public key
-                        int ew,        // Solution of puzzle, encrypted with shared key Qs
+                        int[4] ew,    // Solution of puzzle, encrypted with shared key Qs
+                        int nonce,    // TODO
                         Proof pi,     // Proof of solution for the whole circuit C
                         SigHashPreimage preimage
                     ) {
@@ -29,6 +30,7 @@ contract InformationBounty {
                    this.Qa.y[1],
                    this.Qa.y[2],
                    this.Qa.y[3],
+                   nonce,
                    Qb.x[0],
                    Qb.x[1],
                    Qb.x[2],
@@ -37,7 +39,10 @@ contract InformationBounty {
                    Qb.y[1],
                    Qb.y[2],
                    Qb.y[3],
-                   ew,
+                   ew[0],
+                   ew[1],
+                   ew[2],
+                   ew[3],
                    this.x
                ];
         bool proofCorrect = ZKSNARK.verifyOptimized(pubInputs, pi, this.vk);
@@ -64,16 +69,18 @@ contract InformationBounty {
     }
 
     static function point2PubKey(ECPoint point) : PubKey {
-        // Convert a point to a uncompressed public key.
+        // Convert a point to a uncompressed public key. Coordinates are encoded as BE values.
+        // point.x[0] are the least significant bytes (also in BE format),
+        // point.x[3] are the most significant bytes (also in BE format)
         return PubKey(b'04' + 
-                toBEUnsigned(point.x[0], 8) + 
-                toBEUnsigned(point.x[1], 8) + 
-                toBEUnsigned(point.x[2], 8) + 
                 toBEUnsigned(point.x[3], 8) + 
-                toBEUnsigned(point.y[0], 8) + 
-                toBEUnsigned(point.y[1], 8) + 
+                toBEUnsigned(point.x[2], 8) + 
+                toBEUnsigned(point.x[1], 8) + 
+                toBEUnsigned(point.x[0], 8) + 
+                toBEUnsigned(point.y[3], 8) + 
                 toBEUnsigned(point.y[2], 8) + 
-                toBEUnsigned(point.y[3], 8));
+                toBEUnsigned(point.y[1], 8) + 
+                toBEUnsigned(point.y[0], 8));
     }
 
     static function toBEUnsigned(int n, static const  int l) : bytes {

@@ -4,6 +4,8 @@ include "ecdsa/ecdsa.circom";
 include "ecdsa/secp256k1.circom";
 include "util/poseidon.circom";
 
+// TODO: Move other templates than the main one under util/.
+
 template BitArr2Num (n) {
   assert (n > 0);
 
@@ -13,7 +15,7 @@ template BitArr2Num (n) {
   var sum = 0;
   for (var i = 0; i < n; i++) {
     assert (in[i] == 0 || in[i] == 1);
-    sum += 2 ** i * in[i];
+    sum += 2 ** i * in[n - 1 - i];
   }
 
   out <== sum;
@@ -41,10 +43,10 @@ template FromatSharedKey() {
     component bits2 = Num2Bits(64);
     component bits3 = Num2Bits(64);
     
-    bits0.in <== pointX[0];
-    bits1.in <== pointX[1];
-    bits2.in <== pointX[2];
-    bits3.in <== pointX[3];
+    bits0.in <== pointX[3];
+    bits1.in <== pointX[2];
+    bits2.in <== pointX[1];
+    bits3.in <== pointX[0];
     
     component bitsKs0 = ConcatBitArr();
     component bitsKs1 = ConcatBitArr();

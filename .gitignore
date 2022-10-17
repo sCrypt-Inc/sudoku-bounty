@@ -5,6 +5,7 @@ test_main*
 pot21_final.ptau
 public.json
 *.zkey
+verification_key.json
 
 # Logs
 logs
