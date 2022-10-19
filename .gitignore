@@ -6,6 +6,9 @@ pot21_final.ptau
 public.json
 *.zkey
 verification_key.json
+input.json
+proof.json
+*.wtns
 
 # Logs
 logs

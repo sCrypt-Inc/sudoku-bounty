@@ -6,19 +6,20 @@ include "util/poseidon.circom";
 
 // TODO: Move other templates than the main one under util/.
 
-template BitArr2Num (n) {
-  assert (n > 0);
+template BitArr2Num(n) {
+    // Assume BE input.
+    assert (n > 0);
 
-  signal input in[n];
-  signal output out;
+    signal input in[n];
+    signal output out;
 
-  var sum = 0;
-  for (var i = 0; i < n; i++) {
-    assert (in[i] == 0 || in[i] == 1);
-    sum += 2 ** i * in[n - 1 - i];
-  }
+    var sum = 0;
+    for (var i = 0; i < n; i++) {
+      assert (in[i] == 0 || in[i] == 1);
+      sum += 2 ** i * in[n - 1 - i];
+    }
 
-  out <== sum;
+    out <== sum;
 }
 
 template ConcatBitArr() {
@@ -43,25 +44,25 @@ template FromatSharedKey() {
     component bits2 = Num2Bits(64);
     component bits3 = Num2Bits(64);
     
-    bits0.in <== pointX[3];
-    bits1.in <== pointX[2];
-    bits2.in <== pointX[1];
-    bits3.in <== pointX[0];
+    bits0.in <== pointX[0];
+    bits1.in <== pointX[1];
+    bits2.in <== pointX[2];
+    bits3.in <== pointX[3];
     
     component bitsKs0 = ConcatBitArr();
     component bitsKs1 = ConcatBitArr();
     
     for (var i = 0; i < 64; i++) {
-        bitsKs0.b0[i] <== bits0.out[i];
+        bitsKs0.b0[i] <== bits0.out[63 - i];
     }
     for (var i = 0; i < 64; i++) {
-        bitsKs0.b1[i] <== bits1.out[i];
+        bitsKs0.b1[i] <== bits1.out[63 - i];
     }
     for (var i = 0; i < 64; i++) {
-        bitsKs1.b0[i] <== bits2.out[i];
+        bitsKs1.b0[i] <== bits2.out[63 - i];
     }
     for (var i = 0; i < 64; i++) {
-        bitsKs1.b1[i] <== bits3.out[i];
+        bitsKs1.b1[i] <== bits3.out[63 - i];
     }
     
     component numKs0 = BitArr2Num(128);

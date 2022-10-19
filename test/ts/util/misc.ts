@@ -104,24 +104,24 @@ function vKeyToSCryptType(vKey: any, ContractTypes: Record<string, typeof Scrypt
 
 function proofToSCryptType(proof: any, ContractTypes: Record<string, typeof ScryptType>) {
    let a = new ContractTypes.G1Point({
-        x: BigInt("0x" + proof.pi_a[0]),
-        y: BigInt("0x" + proof.pi_a[1])
+        x: BigInt(proof.pi_a[0]),
+        y: BigInt(proof.pi_a[1])
    });
     
     let b = new ContractTypes.G2Point({
         x: new ContractTypes.FQ2({
-            x: BigInt("0x" + proof.pi_b[0][0]),
-            y: BigInt("0x" + proof.pi_b[0][1])
+            x: BigInt(proof.pi_b[0][0]),
+            y: BigInt(proof.pi_b[0][1])
         }),
         y: new ContractTypes.FQ2({
-            x: BigInt("0x" + proof.pi_b[1][0]),
-            y: BigInt("0x" + proof.pi_b[1][1])
+            x: BigInt(proof.pi_b[1][0]),
+            y: BigInt(proof.pi_b[1][1])
         })
     });
 
    let c = new ContractTypes.G1Point({
-        x: BigInt("0x" + proof.pi_c[0]),
-        y: BigInt("0x" + proof.pi_c[1])
+        x: BigInt(proof.pi_c[0]),
+        y: BigInt(proof.pi_c[1])
    });
    
    return new ContractTypes.Proof({
