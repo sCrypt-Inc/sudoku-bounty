@@ -3,6 +3,7 @@ pragma circom 2.0.2;
 include "ecdsa/ecdsa.circom";
 include "ecdsa/secp256k1.circom";
 include "util/poseidon.circom";
+include "sudoku/sudoku.circom";
 
 // TODO: Move other templates than the main one under util/.
 
@@ -79,28 +80,34 @@ template FromatSharedKey() {
     ks[1] <== numKs1.out;
 }
 
-// Circuit for proving the knowledge of the square root of a number.
-// w * w = x
+// Circuit for proving the knowledge of the solution to a sudoku puzzle.
 // Secp256k1 256-bit values are representet as 4 x 64-bit values.
 // ---------------
-// `lMsg`: length of encrypted msg
+// `N`:           sudoku puzzle dimension
+// `sqrtN`:       sqrt(sudoku puzzle dimension)
 // `lCyphertext`: length of encrypted msg (see PoseidonEncryptCheck implementation)
-template Main(lMsg, lCyphertext) {
+template Main(N, sqrtN, lCyphertext) {
 
     // Private inputs:
-    signal input w[lMsg];           // Solition to the specified puzzle (w*w = x).
+    signal input w[N][N];           // Solition to the specified puzzle.
     signal input db[4];             // Seller (Bob) private key.
     signal input Qs[2][4];          // Shared (symmetric) key. Used to encrypt w.
 
     // Public inputs:
+    signal input unsolved[N][N];    // Unsolved sudoku board.
     signal input Qa[2][4];          // Buyer (Alice) public key.
     signal input Qb[2][4];          // Seller (Bob) public key.
     signal input nonce;             // Needed to encrypt/decrypt xy.
     signal input ew[lCyphertext];   // Encrypted solution to puzzle.
-    signal input x;
 
     //// Assert w is a valid solution.
-    x === w[0] * w[0];
+    component sudokuVerify = Sudoku(sqrtN, N);
+    for (var i = 0; i < N; i++) {
+        for (var j = 0; j < N; j++) {
+            sudokuVerify.unsolved[i][j] <== unsolved[i][j];
+            sudokuVerify.solved[i][j] <== w[i][j];
+        }
+    }
 
     //// Assert that (db * Qa) = Qs
     component privToPub0 = Secp256k1ScalarMult(64, 4);
@@ -137,14 +144,16 @@ template Main(lMsg, lCyphertext) {
     }
 
     //// Assert that encrypting w with Qs produces ew.
-    component p = PoseidonEncryptCheck(lMsg);
+    component p = PoseidonEncryptCheck(N*N);
 
     for (var i = 0; i < lCyphertext; i++) {
         p.ciphertext[i] <== ew[i];
     }
 
-    for (var i = 0; i < lMsg; i++) {
-        p.message[i] <== w[i];
+    for (var i = 0; i < N; i++) {
+        for (var j = 0; j < N; j++) {
+            p.message[i*N + j] <== w[i][j];
+        }
     }
     
     component sharedKey = FromatSharedKey();

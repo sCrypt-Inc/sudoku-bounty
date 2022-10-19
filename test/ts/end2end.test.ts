@@ -28,9 +28,31 @@ describe("End2End", function () {
     
     let rewardSats = 10000;
     let contractExpireBlock = 761406;
-    
-    let w = BigInt(4);
-    let x = BigInt(16);  // 4 * 4 = 16
+
+    let w = [
+        [1, 8, 4, 3, 7, 6, 2, 9, 5],
+        [5, 3, 7, 2, 9, 1, 8, 4, 6],
+        [9, 2, 6, 8, 4, 5, 7, 1, 3],
+        [3, 6, 5, 7, 1, 8, 4, 2, 9],
+        [2, 7, 8, 4, 6, 9, 5, 3, 1],
+        [4, 1, 9, 5, 3, 2, 6, 7, 8],
+        [6, 5, 3, 1, 2, 4, 9, 8, 7],
+        [8, 4, 1, 9, 5, 7, 3, 6, 2],
+        [7, 9, 2, 6, 8, 3, 1, 5, 4],
+    ];
+    let unsolved = [
+        [0, 0, 0, 0, 0, 6, 0, 0, 0],
+        [0, 0, 7, 2, 0, 0, 8, 0, 0],
+        [9, 0, 6, 8, 0, 0, 0, 1, 0],
+        [3, 0, 0, 7, 0, 0, 0, 2, 9],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [4, 0, 0, 5, 0, 0, 0, 7, 0],
+        [6, 5, 0, 1, 0, 0, 0, 0, 0],
+        [8, 0, 1, 0, 5, 0, 3, 0, 0],
+        [7, 9, 2, 0, 0, 0, 0, 0, 4],
+    ];
+
+    let wFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(value), []);
     
     let db: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
     let Qb: Point = Point.fromPrivateKey(db);
@@ -44,7 +66,7 @@ describe("End2End", function () {
     let QsyArray = bigIntToArray(64, 4, Qs.y);
 
     let nonce = BigInt(1234); // TODO
-    let ew = poseidonEncrypt([w], formatSharedKey(QsxArray), nonce);
+    let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
     
     let infoBounty: any;
     let vKey: any;
@@ -79,11 +101,11 @@ describe("End2End", function () {
             "w": w, 
             "db": dbArray,
             "Qs": [QsxArray, QsyArray],
+            "unsolved": unsolved,
             "Qa": [QaxArray, QayArray],
             "Qb": [QbxArray, QbyArray],
             "nonce": nonce,
-            "ew": ew,
-            "x": x
+            "ew": ew
         };
 
         fs.writeFile("input.json", JSON.stringify(witness), function(err:any) {
@@ -117,7 +139,7 @@ describe("End2End", function () {
 
         infoBounty = new InformationBounty(
             new ContractTypes.ECPoint({ x: QaxArray, y: QayArray }),
-            x,
+            wFlattened,
             vKeyToSCryptType(vKey, ContractTypes),
             rewardSats,
             contractExpireBlock 

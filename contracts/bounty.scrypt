@@ -7,7 +7,7 @@ struct ECPoint {
 
 contract InformationBounty {
     ECPoint Qa;
-    int x;   // w*w = x
+    int[82] x;   // Flattened solution to the sudoku puzzle.
     VerifyingKey vk;
 
     int satsReward;
@@ -43,7 +43,15 @@ contract InformationBounty {
                    ew[1],
                    ew[2],
                    ew[3],
-                   this.x
+                   this.x[0], this.x[1], this.x[2], this.x[3], this.x[4], this.x[5], this.x[6], this.x[7], this.x[8], this.x[9],
+                   this.x[10], this.x[11], this.x[12], this.x[13], this.x[14], this.x[15], this.x[16], this.x[17], this.x[18], this.x[19],
+                   this.x[20], this.x[21], this.x[22], this.x[23], this.x[24], this.x[25], this.x[26], this.x[27], this.x[28], this.x[29],
+                   this.x[30], this.x[31], this.x[32], this.x[33], this.x[34], this.x[35], this.x[36], this.x[37], this.x[38], this.x[39],
+                   this.x[40], this.x[41], this.x[42], this.x[43], this.x[44], this.x[45], this.x[46], this.x[47], this.x[48], this.x[49],
+                   this.x[50], this.x[51], this.x[52], this.x[53], this.x[54], this.x[55], this.x[56], this.x[57], this.x[58], this.x[59],
+                   this.x[60], this.x[61], this.x[62], this.x[63], this.x[64], this.x[65], this.x[66], this.x[67], this.x[68], this.x[69],
+                   this.x[70], this.x[71], this.x[72], this.x[73], this.x[74], this.x[75], this.x[76], this.x[77], this.x[78], this.x[79],
+                   this.x[80], this.x[81]
                ];
         bool proofCorrect = ZKSNARK.verifyOptimized(pubInputs, pi, this.vk);
         require(proofCorrect);
