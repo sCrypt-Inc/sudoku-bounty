@@ -5,6 +5,9 @@ const fs = require("fs");
 import { Point } from '@noble/secp256k1';
 import { poseidonEncrypt, formatSharedKey } from './util/poseidonEncryption';
 
+
+import { sha256 } from "scryptlib";
+
 import { bigIntToArray } from './util/misc';
 
 const circom_tester = require('circom_tester');
@@ -31,18 +34,7 @@ describe("MainCircuit", function () {
         [8, 4, 1, 9, 5, 7, 3, 6, 2],
         [7, 9, 2, 6, 8, 3, 1, 5, 4],
     ];
-    let unsolved = [
-        [0, 0, 0, 0, 0, 6, 0, 0, 0],
-        [0, 0, 7, 2, 0, 0, 8, 0, 0],
-        [9, 0, 6, 8, 0, 0, 0, 1, 0],
-        [3, 0, 0, 7, 0, 0, 0, 2, 9],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [4, 0, 0, 5, 0, 0, 0, 7, 0],
-        [6, 5, 0, 1, 0, 0, 0, 0, 0],
-        [8, 0, 1, 0, 5, 0, 3, 0, 0],
-        [7, 9, 2, 0, 0, 0, 0, 0, 4],
-    ];
-    
+
     let wFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(value), []);
     
     let db: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
@@ -58,7 +50,16 @@ describe("MainCircuit", function () {
 
     let nonce = BigInt(1234);
     let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
-    console.log(ew.length);
+
+    let ewHex = '';
+    for (var i = 0; i < ew.length; i++) {
+        let partStr = ew[i].toString(16);
+        ewHex += "0".repeat(64-partStr.length) + partStr;
+    }
+    let Hew = sha256(ewHex);
+    console.log(Hew);
+    let Hew0 = BigInt('0x' + Hew.substring(0, 32));
+    let Hew1 = BigInt('0x' + Hew.substring(32, 64));
     
     let circuit: any;
     
@@ -73,11 +74,11 @@ describe("MainCircuit", function () {
                     "w": w, 
                     "db": dbArray,
                     "Qs": [QsxArray, QsyArray],
-                    "unsolved": unsolved,
+                    "ew": ew,
+                    "Hew": [Hew0, Hew1],
                     "Qa": [QaxArray, QayArray],
                     "Qb": [QbxArray, QbyArray],
                     "nonce": nonce,
-                    "ew": ew
                 }
             );
             await circuit.checkConstraints(witness);

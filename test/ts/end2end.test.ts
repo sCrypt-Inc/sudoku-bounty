@@ -6,8 +6,8 @@ import {execSync, ChildProcess } from 'child_process';
 
 
 import { buildContractClass, VerifyResult, compileContract, buildTypeClasses,
-         ScryptType, hash160, PubKey, Ripemd160, bsv, getPreimage,
-         buildPublicKeyHashScript, signTx} from "scryptlib";
+         ScryptType, hash160, PubKey, Ripemd160, bsv, getPreimage, sha256,
+         buildPublicKeyHashScript, signTx, findCompiler, compile, Sha256} from "scryptlib";
 const snarkjs = require('snarkjs');
 
 import { Point } from '@noble/secp256k1';
@@ -40,18 +40,6 @@ describe("End2End", function () {
         [8, 4, 1, 9, 5, 7, 3, 6, 2],
         [7, 9, 2, 6, 8, 3, 1, 5, 4],
     ];
-    let unsolved = [
-        [0, 0, 0, 0, 0, 6, 0, 0, 0],
-        [0, 0, 7, 2, 0, 0, 8, 0, 0],
-        [9, 0, 6, 8, 0, 0, 0, 1, 0],
-        [3, 0, 0, 7, 0, 0, 0, 2, 9],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [4, 0, 0, 5, 0, 0, 0, 7, 0],
-        [6, 5, 0, 1, 0, 0, 0, 0, 0],
-        [8, 0, 1, 0, 5, 0, 3, 0, 0],
-        [7, 9, 2, 0, 0, 0, 0, 0, 4],
-    ];
-
     let wFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(value), []);
     
     let db: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
@@ -67,6 +55,15 @@ describe("End2End", function () {
 
     let nonce = BigInt(1234); // TODO
     let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
+    
+    let ewHex = '';
+    for (var i = 0; i < ew.length; i++) {
+        let partStr = ew[i].toString(16);
+        ewHex += "0".repeat(64-partStr.length) + partStr;
+    }
+    let Hew = sha256(ewHex);
+    let Hew0 = BigInt('0x' + Hew.substring(0, 32));
+    let Hew1 = BigInt('0x' + Hew.substring(32, 64));
     
     let infoBounty: any;
     let vKey: any;
@@ -101,11 +98,11 @@ describe("End2End", function () {
             "w": w, 
             "db": dbArray,
             "Qs": [QsxArray, QsyArray],
-            "unsolved": unsolved,
+            "ew": ew,
+            "Hew": [Hew0, Hew1],
             "Qa": [QaxArray, QayArray],
             "Qb": [QbxArray, QbyArray],
             "nonce": nonce,
-            "ew": ew
         };
 
         fs.writeFile("input.json", JSON.stringify(witness), function(err:any) {
@@ -114,7 +111,7 @@ describe("End2End", function () {
             }
         });
         
-        output = execSync(`node test_main_js/generate_witness.js test_main_js/circuit.wasm input.json witness.wtns`).toString();
+        output = execSync(`node test_main_js/generate_witness.js test_main_js/test_main.wasm input.json witness.wtns`).toString();
         console.log(output);
         output = execSync(`snarkjs groth16 prove circuit_0000.zkey witness.wtns proof.json public.json`).toString();
         console.log(output);
@@ -124,8 +121,27 @@ describe("End2End", function () {
         // Compile sCrypt conract.
         let filePath = path.join(__dirname, '..', '..', 'contracts', 'bounty.scrypt');
         let out = path.join(__dirname, '..', '..', 'out-scrypt');
+        if (!fs.existsSync(out)) {
+            fs.mkdirSync(out);
+        }
 
-        let result = compileContract(filePath, { out: out, desc: true });
+        //let result = compileContract(filePath, { out: out, desc: true });
+        let result = compile(
+          { path: filePath },
+          {
+            desc: true,
+            asm: false,
+            ast: true,
+            debug: true,
+            hex: true,
+            stdout: false,
+            outputDir: out,
+            outputToFiles: false,
+            cmdPrefix: findCompiler(),
+            timeout: 7200000
+          }
+        );
+
         if (result.errors.length > 0) {
             console.log(`Compile contract ${filePath} failed: `, result.errors);
             throw result.errors;
@@ -139,7 +155,6 @@ describe("End2End", function () {
 
         infoBounty = new InformationBounty(
             new ContractTypes.ECPoint({ x: QaxArray, y: QayArray }),
-            wFlattened,
             vKeyToSCryptType(vKey, ContractTypes),
             rewardSats,
             contractExpireBlock 
@@ -163,7 +178,7 @@ describe("End2End", function () {
                 "04" + Qb.x.toString(16) + Qb.y.toString(16)
             )));
 
-            let inputSatoshis = rewardSats + 10000;
+            let inputSatoshis = rewardSats;
             let utxo = {
               txId: crypto.randomBytes(32).toString('hex'),
               outputIndex: 0,
@@ -177,12 +192,21 @@ describe("End2End", function () {
               satoshis: rewardSats
             }))
 
+            let dataOutScript = "0061" + "04" + Qb.x.toString(16) + Qb.y.toString(16) + 
+                                nonce.toString(16) + ewHex;
+            
+            tx.addOutput(new bsv.Transaction.Output({
+              script: dataOutScript,
+              satoshis: 0
+            }))
+
             let preimage = getPreimage(tx, infoBounty.lockingScript, inputSatoshis)
 
             let context = { tx, inputIndex: 0, inputSatoshis };
             const result = infoBounty.unlock(
                 new ContractTypes.ECPoint({ x: QbxArray, y: QbyArray }),
                 ew,
+                new Sha256(Hew),
                 nonce,
                 proofToSCryptType(proof, ContractTypes),
                 preimage
@@ -193,7 +217,7 @@ describe("End2End", function () {
 
     it('Testing contracts deadline function', 
         async function() { 
-            let inputSatoshis = rewardSats + 10000;
+            let inputSatoshis = rewardSats;
             let utxo = {
               txId: crypto.randomBytes(32).toString('hex'),
               outputIndex: 0,

@@ -6,7 +6,7 @@ struct VerifyingKey {
     FQ12 millerb1a1;
     G2Point gamma;
     G2Point delta;
-    G1Point[104] gamma_abc;    // Size of array should be N + 1
+    G1Point[19] gamma_abc;    // Size of array should be N + 1
 }
 
 struct Proof {
@@ -18,8 +18,8 @@ struct Proof {
 library ZKSNARK {
 
     // Number of inputs.
-    static const int N = 103;
-    static const int N_1 = 104;   // N + 1
+    static const int N = 19;
+    static const int N_1 = 20;   // N + 1
 
     static function vkXSetup(int[N] inputs, VerifyingKey vk) : G1Point {
 	    G1Point vk_x = vk.gamma_abc[0];

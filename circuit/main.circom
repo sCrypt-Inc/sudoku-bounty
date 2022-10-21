@@ -1,8 +1,10 @@
 pragma circom 2.0.2;
 
+include "../node_modules/circomlib/circuits/sha256/sha256.circom";
+
 include "ecdsa/ecdsa.circom";
 include "ecdsa/secp256k1.circom";
-include "util/poseidon.circom";
+include "poseidon/poseidon.circom";
 include "sudoku/sudoku.circom";
 
 // TODO: Move other templates than the main one under util/.
@@ -33,6 +35,23 @@ template ConcatBitArr() {
     }
     for (var j = 0; j < 64; j++) {
         out[j + 64] <== b1[j];
+    }
+}
+
+template Num2BitsMultipleReverse(nNums, nBits) {
+    signal input in[nNums];
+    signal output out[nNums][nBits];
+
+    for (var i = 0; i < nNums; i++) {
+        var lc1=0;
+        var e2=1;
+        for (var j = 0; j < nBits; j++) {
+            out[i][nBits - 1 - j] <-- (in[i] >> j) & 1;
+            out[i][nBits - 1 - j] * (out[i][nBits - 1 - j] - 1 ) === 0;
+            lc1 += out[i][nBits - 1 - j] * e2;
+            e2 = e2+e2;
+        }
+        lc1 === in[i];
     }
 }
 
@@ -86,19 +105,56 @@ template FromatSharedKey() {
 // `N`:           sudoku puzzle dimension
 // `sqrtN`:       sqrt(sudoku puzzle dimension)
 // `lCyphertext`: length of encrypted msg (see PoseidonEncryptCheck implementation)
+//                in this case this could be just N * N + 1
 template Main(N, sqrtN, lCyphertext) {
 
     // Private inputs:
     signal input w[N][N];           // Solition to the specified puzzle.
     signal input db[4];             // Seller (Bob) private key.
     signal input Qs[2][4];          // Shared (symmetric) key. Used to encrypt w.
+    signal input ew[lCyphertext];   // Encrypted solution to puzzle.
 
     // Public inputs:
-    signal input unsolved[N][N];    // Unsolved sudoku board.
+    signal input Hew[2];            // Hash of ew.
     signal input Qa[2][4];          // Buyer (Alice) public key.
     signal input Qb[2][4];          // Seller (Bob) public key.
     signal input nonce;             // Needed to encrypt/decrypt xy.
-    signal input ew[lCyphertext];   // Encrypted solution to puzzle.
+
+    // Unsolved sudoku board.
+    var unsolved[N][N] = [
+        [0, 0, 0, 0, 0, 6, 0, 0, 0],
+        [0, 0, 7, 2, 0, 0, 8, 0, 0],
+        [9, 0, 6, 8, 0, 0, 0, 1, 0],
+        [3, 0, 0, 7, 0, 0, 0, 2, 9],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [4, 0, 0, 5, 0, 0, 0, 7, 0],
+        [6, 5, 0, 1, 0, 0, 0, 0, 0],
+        [8, 0, 1, 0, 5, 0, 3, 0, 0],
+        [7, 9, 2, 0, 0, 0, 0, 0, 4]
+    ];
+    
+    //// Assert that ew hashes to Hew.
+    component hashCheck = Sha256(lCyphertext * 256);
+
+    component ewBitsByPart = Num2BitsMultipleReverse(lCyphertext, 256);
+    for (var i = 0; i < lCyphertext; i++) {
+        ewBitsByPart.in[i] <== ew[i];
+    }
+
+    for (var i = 0; i < lCyphertext; i++) {
+        for (var j = 0; j < 256; j++) {
+            hashCheck.in[i * 256 + j] <== ewBitsByPart.out[i][j];
+        }
+    }
+
+    component Hew0 = BitArr2Num(128);
+    component Hew1 = BitArr2Num(128);
+    for (var i = 0; i < 128; i++) {
+        Hew0.in[i] <== hashCheck.out[i];
+        Hew1.in[i] <== hashCheck.out[i + 128];
+    }
+    Hew[0] === Hew0.out;
+    Hew[1] === Hew1.out;
 
     //// Assert w is a valid solution.
     component sudokuVerify = Sudoku(sqrtN, N);

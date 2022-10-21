@@ -3,7 +3,6 @@ Prerequisites: Go compiler in PATH for bn256 precalc.
 
 // TODO: Command to get compiler binary
 
-
 Get ptau file by running:
 
 ```sh
