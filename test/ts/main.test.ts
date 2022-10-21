@@ -57,7 +57,6 @@ describe("MainCircuit", function () {
         ewHex += "0".repeat(64-partStr.length) + partStr;
     }
     let Hew = sha256(ewHex);
-    console.log(Hew);
     let Hew0 = BigInt('0x' + Hew.substring(0, 32));
     let Hew1 = BigInt('0x' + Hew.substring(32, 64));
     

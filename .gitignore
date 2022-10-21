@@ -2,7 +2,7 @@ out-scrypt/
 out/
 compiler/
 test_main*
-pot21_final.ptau
+*.ptau
 public.json
 *.zkey
 verification_key.json
