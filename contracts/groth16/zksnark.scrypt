@@ -6,7 +6,7 @@ struct VerifyingKey {
     FQ12 millerb1a1;
     G2Point gamma;
     G2Point delta;
-    G1Point[19] gamma_abc;    // Size of array should be N + 1
+    G1Point[20] gamma_abc;    // Size of array should be N + 1
 }
 
 struct Proof {

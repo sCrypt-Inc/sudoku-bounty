@@ -12,6 +12,7 @@ wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_22.ptau -
 
 Run tests:
 ```sh
+export NODE_OPTIONS="--max-old-space-size=8192" # Setup is very memory hungry.
 npm run test
 ```
 

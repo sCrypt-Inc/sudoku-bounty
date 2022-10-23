@@ -13,7 +13,7 @@ const snarkjs = require('snarkjs');
 import { Point } from '@noble/secp256k1';
 import { poseidonEncrypt, formatSharedKey, EcdhSharedKey } from './util/poseidonEncryption';
 
-import { bigIntToArray, vKeyToSCryptType, proofToSCryptType } from './util/misc';
+import { bigIntToArray, bigIntToHexStrFixedLen, vKeyToSCryptType, proofToSCryptType } from './util/misc';
 
 
 // This file test the full end-to-end process of an information bounty as described by the patent.
@@ -81,7 +81,7 @@ describe("End2End", function () {
         let output = execSync(`circom ${circuitPath} --r1cs --wasm --sym`).toString();
         console.log(output);
 
-        output = execSync(`snarkjs groth16 setup test_main.r1cs pot21_final.ptau circuit_0000.zkey`).toString();
+        output = execSync(`snarkjs groth16 setup test_main.r1cs pot22_final.ptau circuit_0000.zkey`).toString();
         console.log(output);
         
         // IMPORTANT: When using Groth16 in production you need a phase 2 contribution here:
@@ -105,7 +105,7 @@ describe("End2End", function () {
             "nonce": nonce,
         };
 
-        fs.writeFile("input.json", JSON.stringify(witness), function(err:any) {
+        fs.writeFileSync("input.json", JSON.stringify(witness), function(err:any) {
             if (err) {
                 console.log(err);
             }
@@ -192,8 +192,8 @@ describe("End2End", function () {
               satoshis: rewardSats
             }))
 
-            let dataOutScript = "0061" + "04" + Qb.x.toString(16) + Qb.y.toString(16) + 
-                                nonce.toString(16) + ewHex;
+            let dataOutScript = "006a" + "04" + Qb.x.toString(16) + Qb.y.toString(16) + 
+                                bigIntToHexStrFixedLen(nonce, 64) + ewHex;
             
             tx.addOutput(new bsv.Transaction.Output({
               script: dataOutScript,

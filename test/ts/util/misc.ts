@@ -25,6 +25,11 @@ function bigIntToArray(n: number, k: number, x: bigint) {
     return ret;
 }
 
+function bigIntToHexStrFixedLen(val: bigint, len: number) : string {
+    let partStr = val.toString(16);
+    return "0".repeat(len-partStr.length) + partStr;
+}
+
 function vKeyToSCryptType(vKey: any, ContractTypes: Record<string, typeof ScryptType>) {
     let cmd = [bn256MillerPrecalcBin,
                BigInt(vKey.vk_alpha_1[0]).toString(16),
@@ -133,6 +138,7 @@ function proofToSCryptType(proof: any, ContractTypes: Record<string, typeof Scry
 
 export {
     bigIntToArray,
+    bigIntToHexStrFixedLen,
     proofToSCryptType,
     vKeyToSCryptType    
 }

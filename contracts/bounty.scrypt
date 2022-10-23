@@ -28,6 +28,8 @@ contract InformationBounty {
         require(sha256(ewBytes) == Hew);   // This ensures the seller included the correct ew.
          
         int[] pubInputs = [
+                   unpack(reverseBytes(Hew[:16], 16) + b'00'),  // Hew is BE by default, hence the reverseBytes.
+                   unpack(reverseBytes(Hew[16:], 16) + b'00'),
                    this.Qa.x[0],
                    this.Qa.x[1],
                    this.Qa.x[2],
@@ -44,9 +46,7 @@ contract InformationBounty {
                    Qb.y[1],
                    Qb.y[2],
                    Qb.y[3],
-                   nonce,
-                   unpack(reverseBytes(Hew[:16], 16)),  // Hew is BE by default, hence the reverseBytes.
-                   unpack(reverseBytes(Hew[16:], 16))
+                   nonce
                ];
         bool proofCorrect = ZKSNARK.verifyOptimized(pubInputs, pi, this.vk);
         require(proofCorrect);
