@@ -25,16 +25,16 @@ template BitArr2Num(n) {
     out <== sum;
 }
 
-template ConcatBitArr() {
-    signal input b0[64];
-    signal input b1[64];
-    signal output out[128];
+template ConcatBitArr(inSize) {
+    signal input b0[inSize];
+    signal input b1[inSize];
+    signal output out[inSize * 2];
     
-    for (var j = 0; j < 64; j++) {
+    for (var j = 0; j < inSize; j++) {
         out[j] <== b0[j];
     }
-    for (var j = 0; j < 64; j++) {
-        out[j + 64] <== b1[j];
+    for (var j = 0; j < inSize; j++) {
+        out[j + inSize] <== b1[j];
     }
 }
 
@@ -55,6 +55,55 @@ template Num2BitsMultipleReverse(nNums, nBits) {
     }
 }
 
+template Point2Bits() {
+    signal input in[2][4];
+    signal output out[512];
+
+    component bits0 = Num2Bits(64);
+    component bits1 = Num2Bits(64);
+    component bits2 = Num2Bits(64);
+    component bits3 = Num2Bits(64);
+    component bits4 = Num2Bits(64);
+    component bits5 = Num2Bits(64);
+    component bits6 = Num2Bits(64);
+    component bits7 = Num2Bits(64);
+    
+    bits0.in <== in[0][0];
+    bits1.in <== in[0][1];
+    bits2.in <== in[0][2];
+    bits3.in <== in[0][3];
+    bits4.in <== in[1][0];
+    bits5.in <== in[1][1];
+    bits6.in <== in[1][2];
+    bits7.in <== in[1][3];
+    
+    for (var i = 0; i < 64; i++) {
+        out[i] <== bits3.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 64] <== bits2.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 128] <== bits1.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 192] <== bits0.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 256] <== bits7.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 320] <== bits6.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 384] <== bits5.out[63 - i];
+    }
+    for (var i = 0; i < 64; i++) {
+        out[i + 448] <== bits4.out[63 - i];
+    }
+    
+}
+
 template FromatSharedKey() {
     signal input pointX[4];
     signal output ks[2];
@@ -69,8 +118,8 @@ template FromatSharedKey() {
     bits2.in <== pointX[2];
     bits3.in <== pointX[3];
     
-    component bitsKs0 = ConcatBitArr();
-    component bitsKs1 = ConcatBitArr();
+    component bitsKs0 = ConcatBitArr(64);
+    component bitsKs1 = ConcatBitArr(64);
     
     for (var i = 0; i < 64; i++) {
         bitsKs0.b0[i] <== bits0.out[63 - i];
@@ -112,13 +161,16 @@ template Main(N, sqrtN, lCyphertext) {
     signal input w[N][N];           // Solition to the specified puzzle.
     signal input db[4];             // Seller (Bob) private key.
     signal input Qs[2][4];          // Shared (symmetric) key. Used to encrypt w.
+    
+    // "Public" inputs that are still passed as private to reduce verifier size on chain:
+    signal input Qa[2][4];          // Buyer (Alice) public key.
+                                    // TODO: Could also be hardcoded into the circuit like the unsolved puzzle.
+    signal input Qb[2][4];          // Seller (Bob) public key.
+    signal input nonce;             // Needed to encrypt/decrypt xy.
     signal input ew[lCyphertext];   // Encrypted solution to puzzle.
 
     // Public inputs:
-    signal input Hew[2];            // Hash of ew.
-    signal input Qa[2][4];          // Buyer (Alice) public key.
-    signal input Qb[2][4];          // Seller (Bob) public key.
-    signal input nonce;             // Needed to encrypt/decrypt xy.
+    signal input Hpub[2];            // Hash of inputs that are supposed to be public.
 
     // Unsolved sudoku board.
     var unsolved[N][N] = [
@@ -133,28 +185,49 @@ template Main(N, sqrtN, lCyphertext) {
         [7, 9, 2, 0, 0, 0, 0, 0, 4]
     ];
     
-    //// Assert that ew hashes to Hew.
-    component hashCheck = Sha256(lCyphertext * 256);
-
+    //// Assert that public inputs hash to Hpub.
     component ewBitsByPart = Num2BitsMultipleReverse(lCyphertext, 256);
     for (var i = 0; i < lCyphertext; i++) {
         ewBitsByPart.in[i] <== ew[i];
     }
+    
+    component QaBits = Point2Bits();
+    component QbBits = Point2Bits();
+    for (var i = 0; i < 4; i++) {
+        QaBits.in[0][i] <== Qa[0][i];
+        QaBits.in[1][i] <== Qa[1][i];
+        QbBits.in[0][i] <== Qb[0][i];
+        QbBits.in[1][i] <== Qb[1][i];
+    }
+    
+    component nonceBits = Num2Bits(256);
+    nonceBits.in <== nonce;
+
+    component hashCheck = Sha256(512 * 2 + 256 + lCyphertext * 256);
+
+    for (var i = 0; i < 512; i++) {
+        hashCheck.in[i] <== QaBits.out[i];
+        hashCheck.in[i + 512] <== QbBits.out[i];
+    }
+
+    for (var i = 0; i < 256; i++) {
+        hashCheck.in[i + 1024] <== nonceBits.out[255 - i];
+    }
 
     for (var i = 0; i < lCyphertext; i++) {
         for (var j = 0; j < 256; j++) {
-            hashCheck.in[i * 256 + j] <== ewBitsByPart.out[i][j];
+            hashCheck.in[i * 256 + j + 1280] <== ewBitsByPart.out[i][j];
         }
     }
 
-    component Hew0 = BitArr2Num(128);
-    component Hew1 = BitArr2Num(128);
+    component Hpub0 = BitArr2Num(128);
+    component Hpub1 = BitArr2Num(128);
     for (var i = 0; i < 128; i++) {
-        Hew0.in[i] <== hashCheck.out[i];
-        Hew1.in[i] <== hashCheck.out[i + 128];
+        Hpub0.in[i] <== hashCheck.out[i];
+        Hpub1.in[i] <== hashCheck.out[i + 128];
     }
-    Hew[0] === Hew0.out;
-    Hew[1] === Hew1.out;
+    Hpub[0] === Hpub0.out;
+    Hpub[1] === Hpub1.out;
 
     //// Assert w is a valid solution.
     component sudokuVerify = Sudoku(sqrtN, N);

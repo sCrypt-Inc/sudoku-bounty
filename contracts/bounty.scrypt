@@ -13,40 +13,26 @@ contract InformationBounty {
     int expirationBlockN;
 
     public function unlock(
-                        ECPoint Qb,   // Bobs public key
-                        int[82] ew,   // Solution of puzzle, encrypted with shared key Qs
-                        Sha256 Hew,   // Hash of ew
+                        ECPoint Qb,   // Bobs public key.
+                        int[82] ew,   // Solution of puzzle, encrypted with shared key Qs.
+                        Sha256 Hpub,   // Hash of public inputs.
                         int nonce,    // Nonce for encryption with shared key. Can be timestamp.
-                        Proof pi,     // Proof of solution for the whole circuit C
+                        Proof pi,     // Proof of solution for the whole circuit C.
                         SigHashPreimage preimage
                     ) {
         
-        bytes ewBytes = b'';
+        bytes pubInputBytes = b'';
+        pubInputBytes += point2PubKey(this.Qa)[1:];
+        pubInputBytes += point2PubKey(Qb)[1:];
+        pubInputBytes += toBEUnsigned(nonce, 32);
         loop (82) : i {
-            ewBytes += toBEUnsigned(ew[i], 32);
+            pubInputBytes += toBEUnsigned(ew[i], 32);
         }
-        require(sha256(ewBytes) == Hew);   // This ensures the seller included the correct ew.
+        require(sha256(pubInputBytes) == Hpub);   // This ensures the seller included the correct public inputs.
          
         int[] pubInputs = [
-                   unpack(reverseBytes(Hew[:16], 16) + b'00'),  // Hew is BE by default, hence the reverseBytes.
-                   unpack(reverseBytes(Hew[16:], 16) + b'00'),
-                   this.Qa.x[0],
-                   this.Qa.x[1],
-                   this.Qa.x[2],
-                   this.Qa.x[3],
-                   this.Qa.y[0],
-                   this.Qa.y[1],
-                   this.Qa.y[2],
-                   this.Qa.y[3],
-                   Qb.x[0],
-                   Qb.x[1],
-                   Qb.x[2],
-                   Qb.x[3],
-                   Qb.y[0],
-                   Qb.y[1],
-                   Qb.y[2],
-                   Qb.y[3],
-                   nonce
+                   unpack(reverseBytes(Hpub[:16], 16) + b'00'),  // Hpub is BE by default, hence the reverseBytes.
+                   unpack(reverseBytes(Hpub[16:], 16) + b'00')
                ];
         bool proofCorrect = ZKSNARK.verifyOptimized(pubInputs, pi, this.vk);
         require(proofCorrect);
@@ -60,7 +46,7 @@ contract InformationBounty {
         
         // Ensure the seller adds another output with just OP_FLASE + OP_RETURN + Qb + nonce + ew
         // to make it easier for the buyer to parse the values.
-        bytes outputScript1 = b'006a' + point2PubKey(Qb) + toBEUnsigned(nonce, 32) + ewBytes;
+        bytes outputScript1 = b'006a' + pubInputBytes;
         bytes output1 = Utils.buildOutput(outputScript1, 0);
 
         require(hash256(output0 + output1) == SigHash.hashOutputs(preimage));

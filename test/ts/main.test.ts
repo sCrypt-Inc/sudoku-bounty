@@ -49,15 +49,21 @@ describe("MainCircuit", function () {
 
     let nonce = BigInt(1234);
     let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
-
+    
+    let QaHex = Qa.toHex(false).slice(2);  // Slice away "04" at the beggining from uncompressed encoding.
+    let QbHex = Qb.toHex(false).slice(2);
+    
+    let nonceHex = nonce.toString(16);
+    nonceHex =  "0".repeat(64 - nonceHex.length) + nonceHex;
+    
     let ewHex = '';
     for (var i = 0; i < ew.length; i++) {
         let partStr = ew[i].toString(16);
         ewHex += "0".repeat(64 - partStr.length) + partStr;
     }
-    let Hew = sha256(ewHex);
-    let Hew0 = BigInt('0x' + Hew.substring(0, 32));
-    let Hew1 = BigInt('0x' + Hew.substring(32, 64));
+    let Hpub = sha256(QaHex + QbHex + nonceHex + ewHex);
+    let Hpub0 = BigInt('0x' + Hpub.substring(0, 32));
+    let Hpub1 = BigInt('0x' + Hpub.substring(32, 64));
 
     let circuit: any;
 
@@ -72,11 +78,11 @@ describe("MainCircuit", function () {
                     "w": w,
                     "db": dbArray,
                     "Qs": [QsxArray, QsyArray],
-                    "ew": ew,
-                    "Hew": [Hew0, Hew1],
                     "Qa": [QaxArray, QayArray],
                     "Qb": [QbxArray, QbyArray],
                     "nonce": nonce,
+                    "ew": ew,
+                    "Hpub": [Hpub0, Hpub1]
                 }
             );
             await circuit.checkConstraints(witness);

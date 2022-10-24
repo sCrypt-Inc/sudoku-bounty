@@ -57,14 +57,21 @@ describe("End2End", function () {
     let nonce = BigInt(1234); // TODO
     let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
 
+    let QaHex = Qa.toHex(false).slice(2);  // Slice away "04" at the beggining from uncompressed encoding.
+    let QbHex = Qb.toHex(false).slice(2);
+    
+    let nonceHex = nonce.toString(16);
+    nonceHex =  "0".repeat(64 - nonceHex.length) + nonceHex;
+    
     let ewHex = '';
     for (var i = 0; i < ew.length; i++) {
         let partStr = ew[i].toString(16);
         ewHex += "0".repeat(64 - partStr.length) + partStr;
     }
-    let Hew = sha256(ewHex);
-    let Hew0 = BigInt('0x' + Hew.substring(0, 32));
-    let Hew1 = BigInt('0x' + Hew.substring(32, 64));
+    let pubInputsHex = QaHex + QbHex + nonceHex + ewHex;
+    let Hpub = sha256(pubInputsHex);
+    let Hpub0 = BigInt('0x' + Hpub.substring(0, 32));
+    let Hpub1 = BigInt('0x' + Hpub.substring(32, 64));
 
     let infoBounty: any;
     let vKey: any;
@@ -98,11 +105,11 @@ describe("End2End", function () {
             "w": w,
             "db": dbArray,
             "Qs": [QsxArray, QsyArray],
-            "ew": ew,
-            "Hew": [Hew0, Hew1],
             "Qa": [QaxArray, QayArray],
             "Qb": [QbxArray, QbyArray],
             "nonce": nonce,
+            "ew": ew,
+            "Hew": [Hpub0, Hpub1]
         };
 
         fs.writeFileSync("input.json", JSON.stringify(witness), function (err: any) {
@@ -192,8 +199,7 @@ describe("End2End", function () {
                 satoshis: rewardSats
             }))
 
-            let dataOutScript = "006a" + "04" + Qb.x.toString(16) + Qb.y.toString(16) +
-                bigIntToHexStrFixedLen(nonce, 64) + ewHex;
+            let dataOutScript = "006a" + pubInputsHex;
 
             tx.addOutput(new bsv.Transaction.Output({
                 script: dataOutScript,
@@ -206,7 +212,7 @@ describe("End2End", function () {
             const result = infoBounty.unlock(
                 new ContractTypes.ECPoint({ x: QbxArray, y: QbyArray }),
                 ew,
-                new Sha256(Hew),
+                new Sha256(Hpub),
                 nonce,
                 proofToSCryptType(proof, ContractTypes),
                 preimage
