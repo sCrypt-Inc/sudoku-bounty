@@ -7,7 +7,10 @@
     "test": "test"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--max_old_space_size=56000 mocha -r ts-node/register 'test/**/*.ts'"
+    "test": "NODE_OPTIONS=--max_old_space_size=56000 mocha -r ts-node/register 'test/**/*.ts'",
+    "deploy": "npx ts-node deploy/deploy.ts",
+    "claim": "npx ts-node deploy/claim.ts",
+    "deadline-cancel": "npx ts-node deploy/deadlineCancel.ts"
   },
   "repository": {
     "type": "git",
@@ -24,7 +27,8 @@
     "scryptlib": "^1.0.8",
     "blake-hash": "^1.1.0",
     "blake2b": "^2.1.3",
-    "web3-utils": "^1.3.0"
+    "web3-utils": "^1.3.0",
+    "ts-sync-request": "^1.4.1"
   },
   "devDependencies": {
     "@noble/secp256k1": "1.3.4",

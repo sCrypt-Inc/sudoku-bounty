@@ -16,31 +16,31 @@ describe("SharedKeyEncryption", function () {
     // TODO: Test with multiple values, test edge cases.
 
     this.timeout(1000 * 1000 * 10);
-    
+
     let m = [43, 32, 456432];
-    
+
     let s: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
     let P: Point = Point.fromPrivateKey(s);
-    
+
     let PxArray = bigIntToArray(64, 4, P.x);
-    
+
     let nonce = BigInt(1234);
-    
+
     let formatedSK: BigInt[];
     let em: BigInt[];
     let circuitFormatSharedKey: any;
     let circuitPoseidonEncrypt: any;
-    
+
     before(async function () {
         // Calculate everything in JS. Assume these are correct.
         formatedSK = formatSharedKey(PxArray);
-        em = poseidonEncrypt(m, formatedSK, nonce); 
+        em = poseidonEncrypt(m, formatedSK, nonce);
         circuitFormatSharedKey = await wasm_tester(path.join(__dirname, "circuits", "test_format_shared_key.circom"));
         circuitPoseidonEncrypt = await wasm_tester(path.join(__dirname, "circuits", "test_poseidon_encrypt.circom"));
     });
-    
-    it('Testing formating shared key in Circom', 
-        async function() { 
+
+    it('Testing formating shared key in Circom',
+        async function () {
             let witness = await circuitFormatSharedKey.calculateWitness(
                 {
                     "pointX": PxArray
@@ -51,8 +51,8 @@ describe("SharedKeyEncryption", function () {
         }
     );
 
-    it('Testing encryption with shared key in Circom', 
-        async function() { 
+    it('Testing encryption with shared key in Circom',
+        async function () {
             let witness = await circuitPoseidonEncrypt.calculateWitness(
                 {
                     "ciphertext": em,

@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import path = require("path");
 const fs = require("fs");
 
@@ -17,7 +16,7 @@ const wasm_tester = circom_tester.wasm;
 
 describe("MainCircuit", function () {
     this.timeout(1000 * 1000 * 10);
-    
+
     let da: bigint = 88549154299169935420064281163296845505587953610183896504176354567359434168161n;
     let Qa: Point = Point.fromPrivateKey(da);
     let QaxArray = bigIntToArray(64, 4, Qa.x);
@@ -36,12 +35,12 @@ describe("MainCircuit", function () {
     ];
 
     let wFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(value), []);
-    
+
     let db: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
     let Qb: Point = Point.fromPrivateKey(db);
 
     let Qs: Point = Qb.multiply(da);
-    
+
     let dbArray = bigIntToArray(64, 4, db);
     let QbxArray = bigIntToArray(64, 4, Qb.x);
     let QbyArray = bigIntToArray(64, 4, Qb.y);
@@ -54,23 +53,23 @@ describe("MainCircuit", function () {
     let ewHex = '';
     for (var i = 0; i < ew.length; i++) {
         let partStr = ew[i].toString(16);
-        ewHex += "0".repeat(64-partStr.length) + partStr;
+        ewHex += "0".repeat(64 - partStr.length) + partStr;
     }
     let Hew = sha256(ewHex);
     let Hew0 = BigInt('0x' + Hew.substring(0, 32));
     let Hew1 = BigInt('0x' + Hew.substring(32, 64));
-    
+
     let circuit: any;
-    
+
     before(async function () {
         circuit = await wasm_tester(path.join(__dirname, "circuits", "test_main_allpublic.circom"));
     });
-    
-    it('Testing main circuit', 
-        async function() { 
+
+    it('Testing main circuit',
+        async function () {
             let witness = await circuit.calculateWitness(
                 {
-                    "w": w, 
+                    "w": w,
                     "db": dbArray,
                     "Qs": [QsxArray, QsyArray],
                     "ew": ew,
