@@ -8,20 +8,28 @@ import { SyncRequestClient } from 'ts-sync-request/dist';
 import {
     buildContractClass, buildTypeClasses,
     hash160, Ripemd160, bsv, getPreimage, sha256,
-    buildPublicKeyHashScript, Sha256
+    buildPublicKeyHashScript, Sha256, compile, findCompiler
 } from "scryptlib";
 
 import { Point } from '@noble/secp256k1';
 import { poseidonEncrypt, formatSharedKey } from '../test/ts/util/poseidonEncryption';
 
-import { bigIntToArray, bigIntToHexStrFixedLen, vKeyToSCryptType, proofToSCryptType } from '../test/ts/util/misc';
+import { bigIntToArray, vKeyToSCryptType, proofToSCryptType } from '../test/ts/util/misc';
+import { DEFAULT_FLAGS, DEFAULT_SIGHASH_TYPE } from "scryptlib/dist/utils";
 
 
 const network = 'main';
 const taalAPIKey = '';
 
-const contractTxId = '618cd4b61d7e25f9211d17af2e549b4f3ab1160bb89e2b407103e9c94c597d28';
+const contractTxId = '8e524b7de2f42cf45daf2851e00161ee6984780c464e484b88b34bb6c629911f';
 const contractTxOutIdx = 0;
+
+const fundAddr = '1CuXp3tbHfBa9UDxBVdz8vBSE8LHVjxZ3n';
+const fundPrivKey = bsv.PrivateKey('');
+const fundPubKey = fundPrivKey.toPublicKey();
+
+const fundingTxId = 'c8ddf762d1244f4ba449aa93d555bf67159d1925aa705ff36453f6b7682c18af';
+const fundingTxIdxOut = 0;
 
 // In a "real world" scenario you would probably wan't to extract these from the contract TX itself.
 const da: bigint = 88549154299169935420064281163296845505587953610183896504176354567359434168161n;
@@ -55,18 +63,25 @@ let QbyArray = bigIntToArray(64, 4, Qb.y);
 let QsxArray = bigIntToArray(64, 4, Qs.x);
 let QsyArray = bigIntToArray(64, 4, Qs.y);
 
-let nonce = BigInt(Math.floor(Date.now() / 1000));
+//let nonce = BigInt(Math.floor(Date.now() / 1000));
+let nonce = BigInt(1234);
 let ew = poseidonEncrypt(wFlattened, formatSharedKey(QsxArray), nonce);
+
+let QaHex = Qa.toHex(false).slice(2);  // Slice away "04" at the beggining from uncompressed encoding.
+let QbHex = Qb.toHex(false).slice(2);
+
+let nonceHex = nonce.toString(16);
+nonceHex = "0".repeat(64 - nonceHex.length) + nonceHex;
 
 let ewHex = '';
 for (var i = 0; i < ew.length; i++) {
     let partStr = ew[i].toString(16);
     ewHex += "0".repeat(64 - partStr.length) + partStr;
 }
-let Hew = sha256(ewHex);
-let Hew0 = BigInt('0x' + Hew.substring(0, 32));
-let Hew1 = BigInt('0x' + Hew.substring(32, 64));
-
+let pubInputsHex = QaHex + QbHex + nonceHex + ewHex;
+let Hpub = sha256(pubInputsHex);
+let Hpub0 = BigInt('0x' + Hpub.substring(0, 32));
+let Hpub1 = BigInt('0x' + Hpub.substring(32, 64));
 
 // Compile circuit.
 let circuitPath = path.join(__dirname, 'circuits', 'test_main.circom');
@@ -83,30 +98,30 @@ if (!fs.existsSync(out)) {
 }
 
 //let result = compileContract(filePath, { out: out, desc: true });
-//let result = compile(
-//  { path: filePath },
-//  {
-//    desc: true,
-//    asm: false,
-//    ast: true,
-//    debug: false,
-//    hex: true,
-//    stdout: false,
-//    outputDir: out,
-//    outputToFiles: false,
-//    cmdPrefix: findCompiler(),
-//    timeout: 7200000
-//  }
-//);
-//
-//if (result.errors.length > 0) {
-//    console.log(`Compile contract ${filePath} failed: `, result.errors);
-//    throw result.errors;
-//}
-//const InformationBounty = buildContractClass(result);
+let result = compile(
+    { path: filePath },
+    {
+        desc: true,
+        asm: false,
+        ast: true,
+        debug: false,
+        hex: true,
+        stdout: false,
+        outputDir: out,
+        outputToFiles: false,
+        cmdPrefix: findCompiler(),
+        timeout: 7200000
+    }
+);
 
-const desc = JSON.parse(fs.readFileSync(path.join(out, "bounty_desc.json")).toString());
-const InformationBounty = buildContractClass(desc);
+if (result.errors.length > 0) {
+    console.log(`Compile contract ${filePath} failed: `, result.errors);
+    throw result.errors;
+}
+const InformationBounty = buildContractClass(result);
+
+//const desc = JSON.parse(fs.readFileSync(path.join(out, "bounty_desc.json")).toString());
+//const InformationBounty = buildContractClass(desc);
 
 const ContractTypes = buildTypeClasses(InformationBounty);
 
@@ -122,14 +137,18 @@ let witness = {
     "w": w,
     "db": dbArray,
     "Qs": [QsxArray, QsyArray],
-    "ew": ew,
-    "Hew": [Hew0, Hew1],
     "Qa": [QaxArray, QayArray],
     "Qb": [QbxArray, QbyArray],
     "nonce": nonce,
+    "ew": ew,
+    "Hpub": [Hpub0, Hpub1]
 };
 
-fs.writeFileSync("input.json", JSON.stringify(witness));
+fs.writeFileSync("input.json", JSON.stringify(witness, (key: any, value: any) =>
+    typeof value === 'bigint'
+        ? value.toString()
+        : value // return everything else unchanged
+));
 
 output = execSync(`node test_main_js/generate_witness.js test_main_js/test_main.wasm input.json witness.wtns`).toString();
 console.log(output);
@@ -144,17 +163,29 @@ let newLockingScript = buildPublicKeyHashScript(new Ripemd160(hash160(
 
 let inputSatoshis = rewardSats;
 
-let response: any = new SyncRequestClient().get(`https://api.whatsonchain.com/v1/bsv/${network}/tx/hash/${contractTxId}`);
-let contractTxLs = bsv.Script(response.vout[contractTxOutIdx].scriptPubKey.hex);
-let tx = new bsv.Transaction();
+let utxo = {
+    txId: contractTxId,
+    outputIndex: contractTxOutIdx,
+    script: infoBounty.lockingScript,
+    satoshis: inputSatoshis
+};
+let tx = new bsv.Transaction().from(utxo);
+
+let response: any = new SyncRequestClient().get(`https://api.whatsonchain.com/v1/bsv/${network}/tx/hash/${fundingTxId}`);
+let fundingTxLs = bsv.Script(response.vout[fundingTxIdxOut].scriptPubKey.hex);
+let fundingAmount = Math.round(response.vout[fundingTxIdxOut].value * 100 * 10 ** 6);
+tx.addInput(new bsv.Transaction.Input.PublicKeyHash({
+    prevTxId: fundingTxId,
+    outputIndex: 0,
+    script: null
+}), fundingTxLs, fundingAmount);
 
 tx.addOutput(new bsv.Transaction.Output({
     script: newLockingScript,
     satoshis: rewardSats
 }))
 
-let dataOutScript = "006a" + "04" + Qb.x.toString(16) + Qb.y.toString(16) +
-    bigIntToHexStrFixedLen(nonce, 64) + ewHex;
+let dataOutScript = "006a" + pubInputsHex;
 
 tx.addOutput(new bsv.Transaction.Output({
     script: dataOutScript,
@@ -162,21 +193,39 @@ tx.addOutput(new bsv.Transaction.Output({
 }))
 
 let preimage = getPreimage(tx, infoBounty.lockingScript, inputSatoshis)
-let uls = infoBounty.unlock(
+
+const uls = infoBounty.unlock(
     new ContractTypes.ECPoint({ x: QbxArray, y: QbyArray }),
     ew,
-    new Sha256(Hew),
+    new Sha256(Hpub),
     nonce,
     proofToSCryptType(proof, ContractTypes),
-    preimage
-).unlockingScript;
+    preimage).unlockingScript;
 
-tx.inputs
-tx.addInput(new bsv.Transaction.Input({
-    prevTxId: contractTxId,
-    outputIndex: contractTxOutIdx,
-    script: uls
-}), contractTxLs, rewardSats);
+tx.inputs[0].setScript(uls);
+
+//let context = { tx, inputIndex: 0, inputSatoshis };
+//const result = infoBounty.unlock(
+//    new ContractTypes.ECPoint({ x: QbxArray, y: QbyArray }),
+//    ew,
+//    new Sha256(Hpub),
+//    nonce,
+//    proofToSCryptType(proof, ContractTypes),
+//    preimage
+//).verify(context);
+//console.log(result);
+
+let sig = {
+    inputIndex: 1,
+    sigtype: DEFAULT_SIGHASH_TYPE,
+    publicKey: fundPubKey,
+    signature: bsv.Transaction.sighash.sign(
+        tx, fundPrivKey, DEFAULT_SIGHASH_TYPE,
+        1, fundingTxLs, new bsv.crypto.BN(fundingAmount), DEFAULT_FLAGS)
+};
+tx.applySignature(sig);
+
+//console.log(tx.inputs[1].isFullySigned());
 
 response = new SyncRequestClient()
     .addHeader("Content-Type", "application/json")

@@ -1,11 +1,12 @@
 import path = require("path");
 import fs from "fs";
+import { execSync } from 'child_process';
 
 import { SyncRequestClient } from 'ts-sync-request/dist';
 
 import {
   buildContractClass, buildTypeClasses,
-  bsv
+  bsv, findCompiler, compile
 } from "scryptlib";
 
 import { Point } from '@noble/secp256k1';
@@ -31,19 +32,19 @@ const QayArray = bigIntToArray(64, 4, Qa.y);
 const rewardSats = 10000;
 const contractExpireBlock = 763000;
 
-//// Compile circuit.
-//let circuitPath = path.join(__dirname, 'circuits', 'test_main.circom');
-//let output = execSync(`circom ${circuitPath} --r1cs --wasm --sym`).toString();
-//console.log(output);
-//
-//output = execSync(`snarkjs groth16 setup test_main.r1cs pot22_final.ptau circuit_0000.zkey`).toString();
-//console.log(output);
-//
-//// IMPORTANT: When using Groth16 in production you need a phase 2 contribution here:
-//// https://github.com/iden3/snarkjs#groth16
-//
-//output = execSync(`snarkjs zkey export verificationkey circuit_0000.zkey verification_key.json`).toString();
-//console.log(output);
+// Compile circuit.
+let circuitPath = path.join(__dirname, 'circuits', 'test_main.circom');
+let output = execSync(`circom ${circuitPath} --r1cs --wasm --sym`).toString();
+console.log(output);
+
+output = execSync(`snarkjs groth16 setup test_main.r1cs pot22_final.ptau circuit_0000.zkey`).toString();
+console.log(output);
+
+// IMPORTANT: When using Groth16 in production you need a phase 2 contribution here:
+// https://github.com/iden3/snarkjs#groth16
+
+output = execSync(`snarkjs zkey export verificationkey circuit_0000.zkey verification_key.json`).toString();
+console.log(output);
 
 let vKey = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "verification_key.json")).toString());
 
@@ -55,30 +56,30 @@ if (!fs.existsSync(out)) {
 }
 
 //let result = compileContract(filePath, { out: out, desc: true });
-//let result = compile(
-//  { path: filePath },
-//  {
-//    desc: true,
-//    asm: false,
-//    ast: true,
-//    debug: false,
-//    hex: true,
-//    stdout: false,
-//    outputDir: out,
-//    outputToFiles: false,
-//    cmdPrefix: findCompiler(),
-//    timeout: 7200000
-//  }
-//);
-//
-//if (result.errors.length > 0) {
-//    console.log(`Compile contract ${filePath} failed: `, result.errors);
-//    throw result.errors;
-//}
-//const InformationBounty = buildContractClass(result);
+let result = compile(
+  { path: filePath },
+  {
+    desc: true,
+    asm: false,
+    ast: true,
+    debug: false,
+    hex: true,
+    stdout: false,
+    outputDir: out,
+    outputToFiles: false,
+    cmdPrefix: findCompiler(),
+    timeout: 7200000
+  }
+);
 
-const desc = JSON.parse(fs.readFileSync(path.join(out, "bounty_desc.json")).toString());
-const InformationBounty = buildContractClass(desc);
+if (result.errors.length > 0) {
+    console.log(`Compile contract ${filePath} failed: `, result.errors);
+    throw result.errors;
+}
+const InformationBounty = buildContractClass(result);
+
+//const desc = JSON.parse(fs.readFileSync(path.join(out, "bounty_desc.json")).toString());
+//const InformationBounty = buildContractClass(desc);
 
 const ContractTypes = buildTypeClasses(InformationBounty);
 
@@ -91,7 +92,7 @@ let infoBounty = new InformationBounty(
 
 let response: any = new SyncRequestClient().get(`https://api.whatsonchain.com/v1/bsv/${network}/tx/hash/${fundingTxId}`);
 let fundingTxLs = bsv.Script(response.vout[fundingTxIdxOut].scriptPubKey.hex);
-let fundingAmount = response.vout[fundingTxIdxOut].value * 100 * 10 ** 6;
+let fundingAmount = Math.floor(response.vout[fundingTxIdxOut].value * 100 * 10 ** 6);
 let tx = new bsv.Transaction()
   .from({
     'txId': fundingTxId,
@@ -117,7 +118,6 @@ tx.applySignature(sig);
 
 let minFee = ((tx.toString().length / 2) / 1000) * 50;
 console.log(minFee)
-
 
 response = new SyncRequestClient()
   .addHeader("Content-Type", "application/json")

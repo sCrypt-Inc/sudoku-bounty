@@ -109,7 +109,7 @@ describe("End2End", function () {
             "Qb": [QbxArray, QbyArray],
             "nonce": nonce,
             "ew": ew,
-            "Hew": [Hpub0, Hpub1]
+            "Hpub": [Hpub0, Hpub1]
         };
 
         fs.writeFileSync("input.json", JSON.stringify(witness), function (err: any) {
