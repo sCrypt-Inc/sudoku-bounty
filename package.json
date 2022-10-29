@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--max_old_space_size=56000 mocha -r ts-node/register 'test/**/*.ts'",
+    "test": "NODE_OPTIONS=--max_old_space_size=56000 mocha --exit -r ts-node/register 'test/**/*.ts'",
     "deploy": "npx ts-node deploy/deploy.ts",
     "claim": "npx ts-node deploy/claim.ts",
     "deadline-cancel": "npx ts-node deploy/deadlineCancel.ts"

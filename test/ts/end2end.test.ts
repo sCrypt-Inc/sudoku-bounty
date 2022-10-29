@@ -13,7 +13,7 @@ import {
 const snarkjs = require('snarkjs');
 
 import { Point } from '@noble/secp256k1';
-import { poseidonEncrypt, formatSharedKey } from './util/poseidonEncryption';
+import { poseidonEncrypt, formatSharedKey, poseidonDecrypt } from './util/poseidonEncryption';
 
 import { bigIntToArray, bigIntToHexStrFixedLen, vKeyToSCryptType, proofToSCryptType } from './util/misc';
 
@@ -218,6 +218,32 @@ describe("End2End", function () {
                 preimage
             ).verify(context);
             expect(result.success, result.error).to.be.true;
+        }
+    );
+
+    it('Testing parsing and decrypting solution',
+        async function () {
+            let _QbHex = pubInputsHex.slice(128, 256);
+            let _nonceHex = pubInputsHex.slice(256, 320);
+            let _ewHex = pubInputsHex.slice(320);
+           
+            let _Qb = new Point(
+                BigInt("0x" + _QbHex.slice(0, 64)),
+                BigInt("0x" + _QbHex.slice(64))
+                );
+            let _Qs: Point = _Qb.multiply(da);
+            let _k = formatSharedKey(bigIntToArray(64, 4, Qs.x));
+        
+            let _nonce = BigInt("0x" + _nonceHex);
+            
+            let ewLen = _ewHex.length / 128;
+            let _ew: BigInt[] = [];
+            for (var i = 0; i < ewLen; i++) {
+               _ew.push(BigInt("0x" + _ewHex.slice(i*128, i*128 + 128))) 
+            }
+        
+            let _wFlattened = poseidonDecrypt(_ew, _k, _nonce, ewLen);
+            expect(_wFlattened).to.equal(wFlattened);
         }
     );
 

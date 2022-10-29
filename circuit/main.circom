@@ -171,8 +171,10 @@ template Main(N, sqrtN, lCyphertext) {
 
     // Public inputs:
     signal input Hpub[2];            // Hash of inputs that are supposed to be public.
+                                     // As we use SHA256 in this example, we need two field elements
+                                     // to acommodate all possible hash values.
 
-    // Unsolved sudoku board.
+    // Unsolved sudoku board. This could also be passed as a public input.
     var unsolved[N][N] = [
         [0, 0, 0, 0, 0, 6, 0, 0, 0],
         [0, 0, 7, 2, 0, 0, 8, 0, 0],
@@ -185,12 +187,13 @@ template Main(N, sqrtN, lCyphertext) {
         [7, 9, 2, 0, 0, 0, 0, 0, 4]
     ];
     
-    //// Assert that public inputs hash to Hpub.
+    //// Assert that public inputs hash to Hpub. ///////////////////////////////////
+    // We first turn each inputs into an array of bits and then concatinate 
+    // them together for the hash preimage. We use SHA256.
     component ewBitsByPart = Num2BitsMultipleReverse(lCyphertext, 256);
     for (var i = 0; i < lCyphertext; i++) {
         ewBitsByPart.in[i] <== ew[i];
     }
-    
     component QaBits = Point2Bits();
     component QbBits = Point2Bits();
     for (var i = 0; i < 4; i++) {
@@ -229,7 +232,10 @@ template Main(N, sqrtN, lCyphertext) {
     Hpub[0] === Hpub0.out;
     Hpub[1] === Hpub1.out;
 
-    //// Assert w is a valid solution.
+    //// Assert w is a valid solution. //////////////////////////////////////////////
+    // For this we use the Sudoku Circom template from: https://github.com/kilyig/zkSudoku
+    // It takes in the data of the unsolved board and a solved board and checks if its correct.
+    // If it's not, then the execution fails.
     component sudokuVerify = Sudoku(sqrtN, N);
     for (var i = 0; i < N; i++) {
         for (var j = 0; j < N; j++) {
@@ -238,7 +244,10 @@ template Main(N, sqrtN, lCyphertext) {
         }
     }
 
-    //// Assert that (db * Qa) = Qs
+    //// Assert that (db * Qa) = Qs ////////////////////////////////////////////////
+    // This will ensure that Bob actually derived Qs using Alices public key Qa.
+    // This uses Circom code to emulate operations on secp256k1 by 0xPARC:
+    // https://github.com/0xPARC/circom-ecdsa
     component privToPub0 = Secp256k1ScalarMult(64, 4);
     for (var i = 0; i < 4; i++) {
         privToPub0.scalar[i] <== db[i];
@@ -257,7 +266,8 @@ template Main(N, sqrtN, lCyphertext) {
         Qs_y_diff[i] === 0;
     }
 
-    //// Assert that (db * G) = Qb
+    //// Assert that (db * G) = Qb /////////////////////////////////////////////////
+    // This makes sure that Qb is really the public key corresponding to db.
     component privToPub1 = ECDSAPrivToPub(64, 4);
     for (var i = 0; i < 4; i++) {
         privToPub1.privkey[i] <== db[i];
@@ -272,7 +282,12 @@ template Main(N, sqrtN, lCyphertext) {
         Qb_y_diff[i] === 0;
     }
 
-    //// Assert that encrypting w with Qs produces ew.
+    //// Assert that encrypting w with Qs produces ew. /////////////////////////////
+    // To achieve that, we use Poseidon Ecryption. Templates are sourced from here:
+    // https://github.com/weijiekoh/poseidon-encryption-circom
+    // We split the x-coordinate of Qs into 4 field elements and use that as the 
+    // encryption key. The encryption also uses a nonce which is passed as a public input.
+    // The nonce can just be a timestamp for example.
     component p = PoseidonEncryptCheck(N*N);
 
     for (var i = 0; i < lCyphertext; i++) {
@@ -297,4 +312,3 @@ template Main(N, sqrtN, lCyphertext) {
     p.out === 1;
     
 }
-

@@ -15,6 +15,8 @@ import { bigIntToArray, vKeyToSCryptType } from '../test/ts/util/misc';
 import { DEFAULT_FLAGS, DEFAULT_SIGHASH_TYPE } from "scryptlib/dist/utils";
 
 
+///// ADJUST: ///////////////////////////////////////////////////////////////////////////////
+//const network = 'test';
 const network = 'main';
 const taalAPIKey = '';
 
@@ -29,8 +31,11 @@ const da: bigint = 8854915429916993542006428116329684550558795361018389650417635
 const Qa: Point = Point.fromPrivateKey(da);
 const QaxArray = bigIntToArray(64, 4, Qa.x);
 const QayArray = bigIntToArray(64, 4, Qa.y);
+
 const rewardSats = 10000;
 const contractExpireBlock = 763000;
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // Compile circuit.
 let circuitPath = path.join(__dirname, 'circuits', 'test_main.circom');

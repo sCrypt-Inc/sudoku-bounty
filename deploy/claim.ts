@@ -18,6 +18,8 @@ import { bigIntToArray, vKeyToSCryptType, proofToSCryptType } from '../test/ts/u
 import { DEFAULT_FLAGS, DEFAULT_SIGHASH_TYPE } from "scryptlib/dist/utils";
 
 
+///// ADJUST: ///////////////////////////////////////////////////////////////////////////////
+//const network = 'test';
 const network = 'main';
 const taalAPIKey = '';
 
@@ -54,6 +56,7 @@ let wFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(v
 
 let db: bigint = 90388020393783788847120091912026443124559466591761394939671630294477859800601n;
 let Qb: Point = Point.fromPrivateKey(db);
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 let Qs: Point = Qb.multiply(da);
 
@@ -155,7 +158,6 @@ console.log(output);
 output = execSync(`snarkjs groth16 prove circuit_0000.zkey witness.wtns proof.json public.json`).toString();
 console.log(output);
 let proof = JSON.parse(fs.readFileSync("proof.json").toString());
-let publicSignals = JSON.parse(fs.readFileSync("public.json").toString());
 
 let newLockingScript = buildPublicKeyHashScript(new Ripemd160(hash160(
     "04" + Qb.x.toString(16) + Qb.y.toString(16)
@@ -203,17 +205,6 @@ const uls = infoBounty.unlock(
     preimage).unlockingScript;
 
 tx.inputs[0].setScript(uls);
-
-//let context = { tx, inputIndex: 0, inputSatoshis };
-//const result = infoBounty.unlock(
-//    new ContractTypes.ECPoint({ x: QbxArray, y: QbyArray }),
-//    ew,
-//    new Sha256(Hpub),
-//    nonce,
-//    proofToSCryptType(proof, ContractTypes),
-//    preimage
-//).verify(context);
-//console.log(result);
 
 let sig = {
     inputIndex: 1,

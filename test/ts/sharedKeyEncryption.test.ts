@@ -13,8 +13,6 @@ const wasm_tester = circom_tester.wasm;
 
 
 describe("SharedKeyEncryption", function () {
-    // TODO: Test with multiple values, test edge cases.
-
     this.timeout(1000 * 1000 * 10);
 
     let m = [43, 32, 456432];

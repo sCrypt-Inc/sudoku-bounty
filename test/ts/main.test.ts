@@ -1,3 +1,5 @@
+import { expect } from 'chai';
+
 import path = require("path");
 const fs = require("fs");
 
@@ -5,7 +7,7 @@ import { Point } from '@noble/secp256k1';
 import { poseidonEncrypt, formatSharedKey } from './util/poseidonEncryption';
 
 
-import { sha256 } from "scryptlib";
+import { PrivKey, sha256 } from "scryptlib";
 
 import { bigIntToArray } from './util/misc';
 
@@ -71,7 +73,7 @@ describe("MainCircuit", function () {
         circuit = await wasm_tester(path.join(__dirname, "circuits", "test_main_allpublic.circom"));
     });
 
-    it('Testing main circuit',
+    it('Testing main circuit with correct inputs',
         async function () {
             let witness = await circuit.calculateWitness(
                 {
@@ -86,6 +88,107 @@ describe("MainCircuit", function () {
                 }
             );
             await circuit.checkConstraints(witness);
+        }
+    );
+
+    it('Testing main circuit with wrong solution',
+        async function () {
+            let wWrong = [
+                [1, 8, 1, 3, 7, 6, 2, 9, 5],
+                [5, 3, 7, 2, 9, 1, 8, 4, 6],
+                [9, 2, 6, 8, 4, 5, 7, 1, 3],
+                [3, 6, 5, 7, 1, 8, 4, 2, 9],
+                [2, 7, 8, 4, 6, 9, 5, 3, 1],
+                [4, 1, 9, 5, 3, 2, 6, 7, 8],
+                [6, 5, 3, 1, 2, 4, 9, 8, 7],
+                [8, 4, 1, 9, 5, 7, 3, 6, 2],
+                [7, 9, 2, 6, 8, 3, 1, 5, 4],
+            ];
+
+            let wWrongFlattened = w.reduce((accumulator: any, value: any) => accumulator.concat(value), []);
+            let ewWrong = poseidonEncrypt(wWrongFlattened, formatSharedKey(QsxArray), nonce);
+
+            let witnessCalcSucceeded = true;
+            try {
+                // Witness generation should fail.
+                let witness = await circuit.calculateWitness(
+                    {
+                        "w": wWrong,
+                        "db": dbArray,
+                        "Qs": [QsxArray, QsyArray],
+                        "Qa": [QaxArray, QayArray],
+                        "Qb": [QbxArray, QbyArray],
+                        "nonce": nonce,
+                        "ew": ewWrong,
+                        "Hpub": [Hpub0, Hpub1]
+                    }
+                );
+            } catch (e) {
+                witnessCalcSucceeded = false;
+            }
+            expect(witnessCalcSucceeded).to.equal(false);
+        }
+    );
+
+    it('Testing main circuit with Qs != db * Qa',
+        async function () {
+        
+            let randPriv: bigint = 37192864923864928634293846263598265893468791234710n;
+            let QsWrong = Point.fromPrivateKey(randPriv);
+
+            let QsWrongxArray = bigIntToArray(64, 4, QsWrong.x);
+            let QsWrongyArray = bigIntToArray(64, 4, QsWrong.y);
+
+            let witnessCalcSucceeded = true;
+            try {
+                // Witness generation should fail.
+                let witness = await circuit.calculateWitness(
+                    {
+                        "w": w,
+                        "db": dbArray,
+                        "Qs": [QsWrongxArray, QsWrongyArray],
+                        "Qa": [QaxArray, QayArray],
+                        "Qb": [QbxArray, QbyArray],
+                        "nonce": nonce,
+                        "ew": ew,
+                        "Hpub": [Hpub0, Hpub1]
+                    }
+                );
+            } catch (e) {
+                witnessCalcSucceeded = false;
+            }
+            expect(witnessCalcSucceeded).to.equal(false);
+        }
+    );
+
+    it('Testing main circuit with Qb != db * G',
+        async function () {
+        
+            let randPriv: bigint = 123781927462385736487953469857609124837219078043573n;
+            let QbWrong = Point.fromPrivateKey(randPriv);
+
+            let QbWrongxArray = bigIntToArray(64, 4, QbWrong.x);
+            let QbWrongyArray = bigIntToArray(64, 4, QbWrong.y);
+
+            let witnessCalcSucceeded = true;
+            try {
+                // Witness generation should fail.
+                let witness = await circuit.calculateWitness(
+                    {
+                        "w": w,
+                        "db": dbArray,
+                        "Qs": [QsxArray, QsyArray],
+                        "Qa": [QaxArray, QayArray],
+                        "Qb": [QbWrongxArray, QbWrongyArray],
+                        "nonce": nonce,
+                        "ew": ew,
+                        "Hpub": [Hpub0, Hpub1]
+                    }
+                );
+            } catch (e) {
+                witnessCalcSucceeded = false;
+            }
+            expect(witnessCalcSucceeded).to.equal(false);
         }
     );
 
