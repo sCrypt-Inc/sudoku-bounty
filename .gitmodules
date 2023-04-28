@@ -1,3 +1,0 @@
-[submodule "test/bn256-miller-precalc"]
-	path = test/bn256-miller-precalc
-	url = git@github.com:sCrypt-Inc/bn256-miller-precalc.git
