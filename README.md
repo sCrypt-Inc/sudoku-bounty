@@ -1,19 +1,21 @@
-# Sudoku Bounty Ts
+# Private Non-Interactive Bounty for General Computation on Bitcoin
 
-## Build
+This repository contains Circom and sCrypt code implementing a private non-interactive bounty for solving a Sudoku puzzle via the Bitcoin network. It contains a full end-to-end test along with deployment script examples.
 
+For more information on how the bounty protocol works read our [article on Medium](TODO).
+
+## Testing
+
+Make sure you got Go, Circom and SnarkJS installed and properly configured. Use Circom version 2.0.2.
+
+Get an already prepared power of tau file by running:
 ```sh
-npm run build
+wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_22.ptau -O pot22_final.ptau
 ```
 
-## Testing Locally
-
+Run tests:
 ```sh
-npm run test
+npm t
 ```
 
-## Run Bitcoin Testnet Tests
-
-```sh
-npm run testnet
-```
+Tests include a full end-to-end test which takes a long time to process.
