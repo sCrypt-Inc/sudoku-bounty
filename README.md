@@ -2,7 +2,7 @@
 
 This repository contains Circom and sCrypt code implementing a private non-interactive bounty for solving a Sudoku puzzle via the Bitcoin network. It contains a full end-to-end test along with deployment script examples.
 
-For more information on how the bounty protocol works read our [article on Medium](TODO).
+For more information on how the bounty protocol works read our [article on Medium](https://xiaohuiliu.medium.com/private-non-interactive-bounties-for-general-computation-on-bitcoin-6bc05fc3c752).
 
 ## Testing
 
